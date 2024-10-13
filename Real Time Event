@@ -1,0 +1,66 @@
+import numpy as np
+import math
+
+
+x = [1, 2, 3, 5, 8, 3, 6, 4, 7, 9, 12]
+
+def calculate_weibull_parameters(data):
+    
+    sorted_data = np.sort(data)
+    n = len(sorted_data)
+    empirical_cdf = np.arange(1, n + 1) / n
+
+    ln_x = np.log(sorted_data)
+    print("lan is ",ln_x)
+    epsilon = 1e-10
+    ln_ln_reciprocal_cdf = np.log(np.log(1 / (1 - empirical_cdf+epsilon)))
+    print("ln lm reciprocal is ",ln_ln_reciprocal_cdf)
+    
+    coefficients = np.polyfit(ln_x, ln_ln_reciprocal_cdf, 1)
+    print("coffeciants are ",coefficients)
+    c = coefficients[0] 
+    print("c is ",c)
+    ln_b = -coefficients[1] / c
+    b = np.exp(ln_b)
+    print(" b and c are",b," ", c)
+    
+    return b, c
+
+def calculate_variability(data):
+   
+    b, c = calculate_weibull_parameters(data)
+   
+    gamma = np.degrees(np.arctan(c))
+    variability = 90 - gamma
+    
+    return variability
+
+def detect_event(data, small_window_size=5, big_window_size=250, threshold_fast=0.005, threshold_slow=0.002):
+   
+    small_window_var = []
+    big_window_var = []
+    events = []
+    
+    for k in range(0, len(data) - big_window_size, small_window_size):
+    
+        small_window_data = data[k:k + small_window_size]
+        gamma_sw = calculate_variability(small_window_data)
+   
+        big_window_data = data[k:k + big_window_size]
+        gamma_bw = calculate_variability(big_window_data)
+    
+        small_window_var.append(gamma_sw)
+        big_window_var.append(gamma_bw)
+ 
+        if gamma_sw > threshold_fast:
+            events.append((k, "Fast Event Detected"))
+        elif gamma_bw > threshold_slow:
+            events.append((k, "Slow Event Detected"))
+    
+    return small_window_var, big_window_var, events
+
+
+frequency_data = [1, 2, 3, 5, 8, 3, 6, 4, 7, 9, 12] 
+small_window_variability, big_window_variability, detected_events = detect_event(frequency_data, small_window_size=3, big_window_size=6)
+
+print("Detected Events:", detected_events)
